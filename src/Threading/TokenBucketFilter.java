@@ -5,26 +5,46 @@ public class TokenBucketFilter {
     // variable to note down the latest token request.
     private long lastRequestTime = System.currentTimeMillis();
     long possibleTokens = 0;
+    private final int ONE_SECOND = 1000;
 
     public TokenBucketFilter(int maxTokens) {
         MAX_TOKENS = maxTokens;
+        // Never start a thread in a constructor
+        Thread dt = new Thread(() -> {
+            daemonThread();
+        });
+        dt.setDaemon(true);
+        dt.start();
+    }
+    private void daemonThread() {
+
+        while (true) {
+
+            synchronized (this) {
+                if (possibleTokens < MAX_TOKENS) {
+                    possibleTokens++;
+                }
+                this.notify();
+            }
+
+            try {
+                Thread.sleep(ONE_SECOND);
+            } catch (InterruptedException ie) {
+                // swallow exception
+            }
+        }
     }
 
     synchronized void getToken() throws InterruptedException {
 
-        possibleTokens += (System.currentTimeMillis() - lastRequestTime) / 1000;
-
-        if (possibleTokens > MAX_TOKENS) {
-            possibleTokens = MAX_TOKENS;
-        }
-
-        if (possibleTokens == 0) {
-            Thread.sleep(1000);
-        } else {
+        synchronized (this) {
+            while (possibleTokens == 0) {
+                this.wait();
+            }
             possibleTokens--;
         }
-        lastRequestTime = System.currentTimeMillis();
 
-        System.out.println("Granting " + Thread.currentThread().getName() + " token at " + (System.currentTimeMillis() / 1000));
+        System.out.println(
+                "Granting " + Thread.currentThread().getName() + " token at " + System.currentTimeMillis() / 1000);
     }
 }

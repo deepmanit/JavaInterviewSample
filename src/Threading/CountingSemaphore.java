@@ -1,12 +1,30 @@
 package Threading;
 
 public class CountingSemaphore {
-    public CountingSemaphore(int i, int i1) {
+    int usedPermits = 0; // permits given out
+    int maxCount;  // max permits to give out
+
+    public CountingSemaphore(int count) {
+        this.maxCount = count;
+    }
+    public CountingSemaphore(int count, int c ) {
+        this.maxCount = count;
     }
 
-    public void acquire() {
+    public synchronized void acquire() throws InterruptedException{
+        while (usedPermits == maxCount)
+            wait();
+
+        notify();
+        usedPermits++;
+
     }
 
-    public void release() {
+    public synchronized void release() throws InterruptedException {
+        while (usedPermits == 0)
+            wait();
+
+        usedPermits--;
+        notify();
     }
 }
